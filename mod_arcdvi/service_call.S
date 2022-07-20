@@ -26,8 +26,6 @@
 #include "riscos_defs.h"
 #include "module.h"
 
-#define MODE_QVGA8              113             /* Like mode 13 but with a magic palette */
-#define MODE_QVGA16             114             /* Like mode 13 but 16BPP */
 #define VIDC_CR_EXTPAL_BIT      (1 << 23)
 #define VIDC_CR_EXTBPP_BIT      (1 << 22)
 
@@ -45,49 +43,37 @@ service_call:
 
         // r2 = requested mode number
         // r3 = Monitor type (or -1)
-        stmfd   r13!, {r8, r12, lr}
+        stmfd   r13!, {r5-r12, lr}
 
         ldr     r12, [r12]
 
 mode_extension:
-        ldr     r8, [r12, #WS_OFFS_FLAGS]
+        /* Look for a matching mode. */
+        adr     r11, modes_list
+        mov     r10, r11
+1:      ldm     r10!, {r5-r8}
+        cmp     r5, #-1
+        beq     not_my_mode
+        cmp     r5, r2
+        bne     1b
 
-        cmp     r2, #MODE_QVGA8
-        bne     1f
-
-        /* MODE_QVGA8 */
-
-        /* We're going into an extended palette mode: set the flag */
-        orr     r8, r8, #WS_FLAG_EXT
-        str     r8, [r12, #WS_OFFS_FLAGS]
+        tst     r6, #1                  /* Flag ext. pal? */
+        ldr     r9, [r12, #WS_OFFS_FLAGS]
+        orrne   r9, r9, #WS_FLAG_EXT
+        biceq   r9, r9, #WS_FLAG_EXT
+        str     r9, [r12, #WS_OFFS_FLAGS]
 
         /* The PaletteV default palette vector seems to be called on
          * new modes, so we don't need to call it here.
          */
 
-        adr     r3, mode_320_256_8_vidc_list
-        adr     r4, mode_320_256_8_ws_list
+        add     r3, r11, r7              /* VIDC reg list */
+        add     r4, r11, r8              /* Workspace list */
         /* Return having claimed this call: */
         mov     r1, #0
-        b       out
-
-1:      cmp     r2, #MODE_QVGA16
-        bne     not_my_mode
-
-        /* MODE_QVGA16 */
-
-        /* Clear extended palette mode */
-        bic     r8, r8, #WS_FLAG_EXT
-        str     r8, [r12, #WS_OFFS_FLAGS]
-
-        adr     r3, mode_320_256_16_vidc_list
-        adr     r4, mode_320_256_16_ws_list
-        /* Return having claimed this call: */
-        mov     r1, #0
-        b       out
 
 out:
-        ldmfd   r13!, {r8, r12, pc}^
+        ldmfd   r13!, {r5-r12, pc}^
 
 not_my_mode:
         /* Clear the extended palette flag: */
@@ -95,6 +81,43 @@ not_my_mode:
         str     r8, [r12, #WS_OFFS_FLAGS]
 
         b       out
+
+        //////////////////////////////////////////////////////////////////////
+        // Custom modes
+
+	/*
+	 *  _   _       _       _
+	 * | \ | | ___ | |_ ___| |
+	 * |  \| |/ _ \| __/ _ \ |
+ 	 * | |\  | (_) | ||  __/_|
+	 * |_| \_|\___/ \__\___(_)
+         *
+         * These screen modes are defined for testing only: the numbers and
+         * attributes WILL CHANGE!
+         *
+         */
+
+modes_list:
+        .long   113                     /* Like mode 13, but extended 256 */
+        .long   1                       /* Flags: extended palette */
+        .long   mode_320_256_8_vidc_list - modes_list
+        .long   mode_320_256_8_ws_list - modes_list
+
+        .long   114                     /* Like mode 13, but high-colour */
+        .long   0                       /* Flags: No extended palette */
+        .long   mode_320_256_16_vidc_list - modes_list
+        .long   mode_320_256_16_ws_list - modes_list
+
+        .long   115                     /* Like mode 15, but extended 256 */
+        .long   1
+        .long   mode_640_256_8_vidc_list - modes_list
+        .long   mode_640_256_8_ws_list - modes_list
+
+        .long   -1
+        .long   -1
+        .long   -1
+        .long   -1
+
 
         //////////////////////////////////////////////////////////////////////
 mode_320_256_8_vidc_list:
@@ -106,6 +129,18 @@ mode_320_256_8_vidc_list:
 mode_320_256_8_ws_list:
         .long   0                       /* List format */
         .long   13                      /* Based on mode 13 */
+        /* No custom VDU variables */
+        .long   -1
+
+mode_640_256_8_vidc_list:
+        .long   0                       /* List format */
+        .long   15                      /* Based on mode 15, except... */
+        .long   (0x38 << 26) | 0x0000009e | VIDC_CR_EXTPAL_BIT       /* CR.EXTPAL=1 */
+        .long   -1
+
+mode_640_256_8_ws_list:
+        .long   0                       /* List format */
+        .long   15                      /* Based on mode 15 */
         /* No custom VDU variables */
         .long   -1
 
@@ -126,7 +161,7 @@ mode_320_256_16_ws_list:
         .long   7
         .long   320*256*2               /* ScreenSize: in bytes */
         .long   9
-        .long   4                       /* Log2BPP */
+        .long   4                       /* Log2BPP (I interpret this as memory-used-per-px, i.e. 2 bytes) */
         .long   10
         .long   4                       /* Log2BPC, 8 pixels = 16 bytes */
         .long   11
