@@ -29,6 +29,20 @@
 #define VIDC_CR_EXTPAL_BIT      (1 << 23)
 #define VIDC_CR_EXTBPP_BIT      (1 << 22)
 
+#define H_CYC(x)        (0x80000000 | ((((x)-2)/2) << 14))
+#define H_SYNC(x)       (0x84000000 | ((((x)-2)/2) << 14))
+#define H_BS(x)         (0x88000000 | ((((x)-2)/2) << 14))
+#define H_DS(x)         (0x8c000000 | ((((x)-2)/2) << 14))
+#define H_DE(x)         (0x90000000 | ((((x)-2)/2) << 14))
+#define H_BE(x)         (0x94000000 | ((((x)-2)/2) << 14))
+#define V_CYC(x)        (0xa0000000 | (((x)-1) << 14))
+#define V_SYNC(x)       (0xa4000000 | (((x)-1) << 14))
+#define V_BS(x)         (0xa8000000 | (((x)-1) << 14))
+#define V_DS(x)         (0xac000000 | (((x)-1) << 14))
+#define V_DE(x)         (0xb0000000 | (((x)-1) << 14))
+#define V_BE(x)         (0xb4000000 | (((x)-1) << 14))
+#define CR(x)           (0xe0000000 | (x))
+
         .text
         .globl service_call
 
@@ -113,6 +127,11 @@ modes_list:
         .long   mode_640_256_8_vidc_list - modes_list
         .long   mode_640_256_8_ws_list - modes_list
 
+        .long   107                     /* Similar to CC's mode 107 */
+        .long   0
+        .long   mode_576_424_16_vidc_list - modes_list
+        .long   mode_576_424_16_ws_list - modes_list
+
         .long   -1
         .long   -1
         .long   -1
@@ -129,7 +148,18 @@ mode_320_256_8_vidc_list:
 mode_320_256_8_ws_list:
         .long   0                       /* List format */
         .long   13                      /* Based on mode 13 */
-        /* No custom VDU variables */
+        .long   0,  0                   /* ModeFlags */
+        .long   1,  79                  /* Unknown */
+        .long   2,  31                  /* ScrBRow */
+        .long   3,  255                 /* NColour */
+        .long   4,  2                   /* XEigFactor: 320px in 1280 coordinates, 2**2 per pixel */
+        .long   5,  2                   /* YEigFactor: same for 256*/
+        .long   6,  320                 /* LineLength: in bytes */
+        .long   7,  320*256             /* ScreenSize: in bytes */
+        .long   9,  3                   /* Log2BPP */
+        .long   10, 3                   /* Log2BPC, 8 pixels = 8 bytes */
+        .long   11, 319                 /* XWindLimit */
+        .long   12, 255                 /* YWindLimit */
         .long   -1
 
 mode_640_256_8_vidc_list:
@@ -141,7 +171,18 @@ mode_640_256_8_vidc_list:
 mode_640_256_8_ws_list:
         .long   0                       /* List format */
         .long   15                      /* Based on mode 15 */
-        /* No custom VDU variables */
+        .long   0,  0                   /* ModeFlags */
+        .long   1,  79                  /* Unknown */
+        .long   2,  31                  /* ScrBRow */
+        .long   3,  255                 /* NColour */
+        .long   4,  2                   /* XEigFactor: 320px in 1280 coordinates, 2**2 per pixel */
+        .long   5,  2                   /* YEigFactor: same for 256*/
+        .long   6,  640                 /* LineLength: in bytes */
+        .long   7,  640*256             /* ScreenSize: in bytes */
+        .long   9,  3                   /* Log2BPP */
+        .long   10, 3                   /* Log2BPC, 8 pixels = 8 bytes */
+        .long   11, 639                 /* XWindLimit */
+        .long   12, 255                 /* YWindLimit */
         .long   -1
 
 mode_320_256_16_vidc_list:
@@ -154,19 +195,55 @@ mode_320_256_16_ws_list:
         .long   0                       /* List format */
         .long   13                      /* Based on mode 13 */
         /* Custom VDU variables */
-        .long   4
-        .long   2                       /* XEigFactor: 320px in 1280 coordinates, 2**2 per pixel */
-        .long   6
-        .long   640                     /* LineLength: in bytes */
-        .long   7
-        .long   320*256*2               /* ScreenSize: in bytes */
-        .long   9
-        .long   4                       /* Log2BPP (I interpret this as memory-used-per-px, i.e. 2 bytes) */
-        .long   10
-        .long   4                       /* Log2BPC, 8 pixels = 16 bytes */
-        .long   11
-        .long   319                     /* XWindLimit */
-        /* The remainder (Y-oriented values) are the same as the base mode 13 */
+        .long   0,  0                   /* ModeFlags */
+        .long   1,  71                  /* Unknown */
+        .long   2,  31                  /* ScrBRow */
+        .long   3,  65535               /* NColour */
+        .long   4,  2                   /* XEigFactor: 320px in 1280 coordinates, 2**2 per pixel */
+        .long   5,  2                   /* YEigFactor: same for 256*/
+        .long   6,  640                 /* LineLength: in bytes */
+        .long   7,  320*256*2           /* ScreenSize: in bytes */
+        .long   9,  4                   /* Log2BPP (I interpret this as memory-used-per-px, i.e. 2 bytes) */
+        .long   10, 4                   /* Log2BPC, 8 pixels = 16 bytes */
+        .long   11, 319                 /* XWindLimit */
+        .long   12, 255                 /* YWindLimit */
         .long   -1
 
+mode_576_424_16_vidc_list:              /* VIDC is actually programmed to double in X, i.e. 1152x424 */
+        .long   0
+        .long   15                      /* Meh in any way relevant? */
+        .long   H_CYC(1400)             /* All these in pixels! Macros convert */
+        .long   H_SYNC(20)
+        .long   H_DS(60)
+        .long   H_BS(60)
+        .long   H_DE(60+1152)
+        .long   H_BE(60+1152)
+        .long   V_CYC(444)
+        .long   V_SYNC(3)
+        .long   V_DS(16)                /* Back porch = DS-VSW */
+        .long   V_BS(16)
+        .long   V_DE(16+424)            /* Front porch = remainder in cycle after display */
+        .long   V_BE(16+424)
+        .long   CR(0xf | VIDC_CR_EXTBPP_BIT)
+        .long   -1
+
+mode_576_424_16_ws_list:
+        .long   0                       /* List format */
+        .long   13                      /* Based on mode 13 */
+        /* Custom VDU variables */
+        .long   0,  0                   /* ModeFlags */
+        .long   1,  71                  /* Unknown */
+        .long   2,  52                  /* ScrBRow */
+        .long   3,  65535               /* NColour */
+        .long   4,  1                   /* XEigFactor */
+        .long   5,  1                   /* YEigFactor */
+        .long   6,  1152                /* LineLength: in bytes */
+        .long   7,  576*424*2           /* ScreenSize: in bytes */
+        .long   9,  4                   /* Log2BPP (I interpret this as memory-used-per-px, i.e. 2 bytes) */
+        .long   10, 4                   /* Log2BPC, 8 pixels = 16 bytes */
+        .long   11, 575                 /* XWindLimit */
+        .long   12, 423                 /* YWindLimit */
+        .long   -1
+
+        //////////////////////////////////////////////////////////////////////
         .end
