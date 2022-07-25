@@ -175,7 +175,7 @@ mode_640_256_8_ws_list:
         .long   1,  79                  /* Unknown */
         .long   2,  31                  /* ScrBRow */
         .long   3,  255                 /* NColour */
-        .long   4,  2                   /* XEigFactor: 320px in 1280 coordinates, 2**2 per pixel */
+        .long   4,  1                   /* XEigFactor: 640px in 1280 coordinates, 2**1 per pixel */
         .long   5,  2                   /* YEigFactor: same for 256*/
         .long   6,  640                 /* LineLength: in bytes */
         .long   7,  640*256             /* ScreenSize: in bytes */
