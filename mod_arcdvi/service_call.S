@@ -127,6 +127,16 @@ modes_list:
         .long   mode_640_256_8_vidc_list - modes_list
         .long   mode_640_256_8_ws_list - modes_list
 
+        .long   116                     /* Like mode 21, but extended 256 */
+        .long   1
+        .long   mode_640_512_8_vidc_list - modes_list
+        .long   mode_640_512_8_ws_list - modes_list
+
+        .long   117                     /* Like mode 28, but extended 256 */
+        .long   1
+        .long   mode_640_480_8_vidc_list - modes_list
+        .long   mode_640_480_8_ws_list - modes_list
+
         .long   107                     /* Similar to CC's mode 107 */
         .long   0
         .long   mode_576_424_16_vidc_list - modes_list
@@ -183,6 +193,52 @@ mode_640_256_8_ws_list:
         .long   10, 3                   /* Log2BPC, 8 pixels = 8 bytes */
         .long   11, 639                 /* XWindLimit */
         .long   12, 255                 /* YWindLimit */
+        .long   -1
+
+mode_640_512_8_vidc_list:
+        .long   0                       /* List format */
+        .long   21                      /* Based on mode 21, except... */
+        .long   (0x38 << 26) | 0x0000008f | VIDC_CR_EXTPAL_BIT       /* CR.EXTPAL=1 */
+        .long   -1
+
+mode_640_512_8_ws_list:
+        .long   0                       /* List format */
+        .long   21                      /* Based on mode 21 */
+        .long   0,  0                   /* ModeFlags */
+        .long   1,  79                  /* Unknown */
+        .long   2,  63                  /* ScrBRow */
+        .long   3,  255                 /* NColour */
+        .long   4,  1                   /* XEigFactor: 640px in 1280 coordinates, 2**1 per pixel */
+        .long   5,  1                   /* YEigFactor: same for 512*/
+        .long   6,  640                 /* LineLength: in bytes */
+        .long   7,  640*512             /* ScreenSize: in bytes */
+        .long   9,  3                   /* Log2BPP */
+        .long   10, 3                   /* Log2BPC, 8 pixels = 8 bytes */
+        .long   11, 639                 /* XWindLimit */
+        .long   12, 511                 /* YWindLimit */
+        .long   -1
+
+mode_640_480_8_vidc_list:
+        .long   0                       /* List format */
+        .long   28                      /* Based on mode 28, except... */
+        .long   (0x38 << 26) | 0x0000008f | VIDC_CR_EXTPAL_BIT       /* CR.EXTPAL=1 */
+        .long   -1
+
+mode_640_480_8_ws_list:
+        .long   0                       /* List format */
+        .long   28                      /* Based on mode 28 */
+        .long   0,  0                   /* ModeFlags */
+        .long   1,  79                  /* Unknown */
+        .long   2,  59                  /* ScrBRow */
+        .long   3,  255                 /* NColour */
+        .long   4,  1                   /* XEigFactor: 640px in 1280 coordinates, 2**1 per pixel */
+        .long   5,  1                   /* YEigFactor: same for 480*/
+        .long   6,  640                 /* LineLength: in bytes */
+        .long   7,  640*480             /* ScreenSize: in bytes */
+        .long   9,  3                   /* Log2BPP */
+        .long   10, 3                   /* Log2BPC, 8 pixels = 8 bytes */
+        .long   11, 639                 /* XWindLimit */
+        .long   12, 479                 /* YWindLimit */
         .long   -1
 
 mode_320_256_16_vidc_list:
