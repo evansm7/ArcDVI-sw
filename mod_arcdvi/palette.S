@@ -171,9 +171,9 @@ vector_palettev:
          * this isn't done when the machine isn't flagged as being in
          * an extended palette mode.
          */
-        stmfd   r13!, {r0-r3, r11}
-        ldr     r11, [r12, #WS_OFFS_FLAGS]
-        tst     r11, #WS_FLAG_EXT
+        stmfd   r13!, {r0-r5, lr}
+        ldr     r5, [r12, #WS_OFFS_FLAGS]
+        tst     r5, #WS_FLAG_EXT
         beq     palettev_exit
 
         /* OK, extended mode, what's the reason code? */
@@ -189,17 +189,32 @@ read_palette:
          *      24 = border
          *      25 = pointer
          *
-         * We handle only 16, others falling back to RISC OS defaults.
-         * FIXME: When border is implemented ...
-        */
+         */
         cmp     r1, #16
-        bne     palettev_exit
+        cmpne   r1, #17
+        cmpne   r1, #18
+        beq     read_palette_regular
 
-        and     r0, r0, #0xff
+        cmp     r1, #24
+        beq     read_palette_dummy
+        /* Otherwise, pointer, which we hand back */
+        b       palettev_exit
+
+read_palette_regular:
+        and     r3, r0, #0xff
         add     r2, r12, #WS_OFFS_PALETTE
-        ldr     r2, [r2, r0, lsl#2]
+        ldr     r2, [r2, r3, lsl#2]
         mov     r2, r2, lsl#8           /* From xxBBGGRR to BBGGRRxx */
-        mov     r3, r2
+        mov     r3, r2                  /* Fake the flashing colours */
+        b       read_palette_out
+
+read_palette_dummy:
+        mov     r2, #0
+        mov     r3, #0
+
+read_palette_out:
+        str     r2, [r13, #4*2]
+        str     r3, [r13, #4*3]
         b       palettev_success
 
 1:      cmp     r4, #2                  /* Is it write palette? */
@@ -214,9 +229,12 @@ write_palette:
          *
          * We support only the case where type=16 and r2=r3
         */
+        cmp     r1, #25                 /* Pointer */
+        beq     palettev_exit           /* Hand it back */
+
         cmp     r1, #16
         cmpeq   r2, r3
-        bne     palettev_exit
+        bne     palettev_success        /* .. we ignore the tricky requests. :P */
 
         and     r0, r0, #0xff
         /* OK, set the colour in r2 to index r0: */
@@ -238,9 +256,7 @@ write_palette:
 
 set_default_palette:
         /* This seems to be called when changing to a new screen mode */
-        stmfd   r13!, {r14}
         bl      palette_default
-        ldmfd   r13!, {r14}
         b       palettev_success
 
 1:      /* Unknown or unhandled reason code, just exit. */
@@ -248,9 +264,10 @@ set_default_palette:
 
 palettev_success:
         mov     r4, #0                  /* Handled */
-palettev_exit:
-        ldmfd   r13!, {r0-r3, r11}
-        movs    pc, r14
+        str     r4, [r13, #4*4]
 
+palettev_exit:
+        ldmfd   r13!, {r0-r5, lr}
+        bics    pc, r14, #V_BIT         /* Other vectors in the docs say something about V being error ... */
 
         .end
